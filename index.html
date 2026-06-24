@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🎯 Prediction Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={corePlugins:{preflight:false}}</script>
+<style>
+  :root{--bg:#090c14;--bg2:#121826;--card:#161d2e;--card2:#1b2336;--line:#252e42;--line2:#323d57;
+    --txt:#e8eef6;--muted:#8a97ac;--accent:#7c5cff;--accent2:#9f86ff;
+    --win:#22c55e;--loss:#ef4444;--pend:#f59e0b;--void:#6b7280;--cyan:#34d399;
+    --radius:16px;--radius-sm:12px;
+    --shadow:0 1px 2px rgba(0,0,0,.28),0 6px 18px -8px rgba(0,0,0,.55);
+    --shadow-lg:0 12px 40px -10px rgba(0,0,0,.65);
+    --glow:0 0 0 1px rgba(124,92,255,.4),0 8px 24px -8px rgba(124,92,255,.55)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:
+      radial-gradient(900px 520px at 85% -15%,rgba(124,92,255,.18),transparent 60%),
+      radial-gradient(760px 520px at 0% -5%,rgba(52,211,153,.07),transparent 55%),
+      var(--bg);
+    color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased;letter-spacing:-.011em}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 18px 90px}
+  header.top{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    margin:0 -18px 22px;padding:16px 18px;
+    background:rgba(9,12,20,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.5px}.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button,select,input{font:inherit;color:var(--txt)}
+  .btn{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:all .16s ease;box-shadow:var(--shadow)}
+  .btn:hover{border-color:var(--accent);background:var(--card2);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn.primary{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:transparent;color:#fff;box-shadow:var(--glow)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:11px;margin:18px 0}
+  .stat{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow);transition:.16s}
+  .stat:hover{border-color:var(--line2);transform:translateY(-2px)}
+  .stat .n{font-size:23px;font-weight:800;letter-spacing:-.5px}.stat .l{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;margin-top:4px;font-weight:600}
+  .pos{color:var(--win)}.neg{color:var(--loss)}
+  .grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin-bottom:18px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .panel h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:10px;font-weight:700}
+  .ch{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
+  .ch .chev{color:var(--muted);font-size:11px;transition:transform .18s;margin-left:auto}
+  .ch.open .chev{transform:rotate(90deg);color:var(--accent)}
+  .cbody.hide{display:none}
+  .secch{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;
+         background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px 15px;margin:0 0 11px;box-shadow:var(--shadow);transition:.16s}
+  .secch:hover{border-color:var(--line2)}
+  .bd{display:flex;flex-direction:column;gap:7px}
+  .bd .r{display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--line);padding-top:7px}
+  .bd .r:first-child{border-top:none;padding-top:0}
+  .tnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tchip{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:8px 15px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:6px;transition:.16s}
+  .tchip:hover{border-color:var(--accent);color:var(--txt);transform:translateY(-1px)}
+  .tchip.active{background:linear-gradient(135deg,var(--accent2),var(--accent));border-color:transparent;color:#fff;box-shadow:var(--glow)}
+  .tchip .cnt{font-size:11px;background:rgba(255,255,255,.08);padding:1px 7px;border-radius:12px}
+  .tchip.active .cnt{background:rgba(255,255,255,.2)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar select,.toolbar input{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;transition:.16s}
+  .toolbar select:focus,.toolbar input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.16)}
+  .toolbar input{flex:1;min-width:140px}
+  .day{margin-bottom:18px}
+  .day h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:0 4px 8px;display:flex;gap:8px;align-items:center;font-weight:700}
+  .day h2 .pill{font-size:11px;background:var(--bg2);border:1px solid var(--line);color:var(--muted);padding:2px 9px;border-radius:20px;text-transform:none;letter-spacing:0;font-weight:600}
+  .tbl{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .row{display:grid;grid-template-columns:1fr 64px 64px 92px 150px;align-items:center;gap:8px;padding:12px 15px;border-top:1px solid var(--line);transition:background .14s}
+  .row:hover{background:rgba(255,255,255,.018)}
+  .row:first-child{border-top:none}
+  .row.head{background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .row.head:hover{background:var(--bg2)}
+  .row.best{background:linear-gradient(90deg,rgba(124,92,255,.10),transparent)}
+  .pk{font-weight:600;font-size:14px}.meta{color:var(--muted);font-size:12px;margin-top:1px}
+  .pkcell{cursor:pointer;user-select:none}
+  .pkcell .chev{display:inline-block;color:var(--muted);font-size:10px;margin-left:6px;transition:transform .15s}
+  .pkcell.open .chev{transform:rotate(90deg);color:var(--accent)}
+  .rat{display:none;padding:0 16px 13px 16px;font-size:13px;color:#c9d3e0;line-height:1.55;border-top:1px dashed var(--line);background:rgba(124,92,255,.05)}
+  .rat.show{display:block}
+  .rat .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin:10px 0 3px;font-weight:700}
+  .tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;letter-spacing:.3px}
+  .tag.best{background:rgba(124,92,255,.2);color:#b7a6ff}.tag.value{background:rgba(52,211,153,.15);color:#6ee7b7}.tag.lean{background:rgba(148,163,184,.12);color:#aab6c7}
+  .num{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+  .st{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;text-align:center;white-space:nowrap}
+  .st.win{background:rgba(34,197,94,.15);color:#4ade80}.st.loss{background:rgba(239,68,68,.13);color:#f87171}
+  .st.pending{background:rgba(245,158,11,.12);color:#fbbf24}.st.void{background:rgba(107,114,128,.15);color:#9ca3af}
+  .st.half_win{background:rgba(34,197,94,.1);color:#86efac}.st.half_loss{background:rgba(239,68,68,.1);color:#fca5a5}
+  .acts{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap}
+  .ic{width:27px;height:27px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;transition:.14s}
+  .ic:hover{border-color:var(--accent);transform:translateY(-1px)} .ic.w:hover{color:var(--win)} .ic.l:hover{color:var(--loss)}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:50}
+  .ov.show{display:flex}
+  .modal{background:var(--bg2);border:1px solid var(--line2);border-radius:18px;padding:22px;width:min(520px,92vw);max-height:90vh;overflow:auto;box-shadow:var(--shadow-lg)}
+  .modal h3{margin-bottom:14px}
+  .f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .f label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+  .f .full{grid-column:1/3}
+  .f input,.f select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13px}
+  .mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .banner{background:linear-gradient(90deg,rgba(124,92,255,.14),rgba(52,211,153,.06));border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:11px 15px;font-size:12.5px;color:#c9d3e0;margin-bottom:16px}
+  footer{margin-top:30px;color:var(--muted);font-size:12px;text-align:center;line-height:1.6}.rg{color:#cbab5e}
+  svg text{fill:var(--muted);font-size:10px}
+  input[type=checkbox]{accent-color:var(--accent)}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:2px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
+  @media(max-width:780px){.stats{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.row{grid-template-columns:1fr 52px 80px 120px}.row .num.stake{display:none}.row.head .stake{display:none}header.top{position:static;margin-bottom:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>🎯 Prediction Tracker</h1><div class="sub">Local app · SQLite + auto-grading · <span id="dot"></span></div></div>
+    <div class="btns">
+      <button class="btn primary" onclick="openAdd()">+ Add pick</button>
+      <button class="btn" style="background:linear-gradient(90deg,#34d399,#10b981);border-color:#10b981;color:#06281d" onclick="settleAuto()">✅ Settle results</button>
+      <button class="btn" style="background:linear-gradient(90deg,#38bdf8,#0ea5e9);border-color:#0ea5e9;color:#04222e" onclick="dispatch('predict')">🔮 Predict next day</button>
+      <button class="btn" style="background:linear-gradient(90deg,#f59e0b,#f97316);border-color:#f59e0b;color:#2a1604" onclick="dispatch('learn')">🧠 Learn from results</button>
+      <button class="btn" onclick="location.href='/api/export.csv'">⬇ CSV</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div style="margin:18px 0">
+    <div class="ch secch open" id="ch-analytics" onclick="collapseToggle('analytics')">📊 Bankroll &amp; Breakdown<span class="chev">▶</span></div>
+    <div class="cbody" id="body-analytics">
+      <div class="grid2" style="margin-bottom:0">
+        <div class="panel"><h3>Bankroll (cumulative units)</h3><div id="chart"></div></div>
+        <div class="panel"><h3>Breakdown</h3><div class="bd" id="breakdown"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="banner"><b>Strategy:</b> singles only · honest prices (~1.8–2.1) · skip sub-1.5 MLs &amp; +1.5 junk · check lineups ~1h pre-KO. <b>Informational only — not betting advice.</b></div>
+
+  <div id="insights"></div>
+  <div id="reqbar"></div>
+
+  <div class="tnav" id="tournaments"></div>
+
+  <div class="toolbar">
+    <select id="fSport" onchange="render()"><option value="">All sports</option><option value="soccer">⚽ Soccer</option><option value="nba">🏀 NBA</option><option value="wnba">🟠 WNBA</option><option value="mlb">⚾ MLB</option><option value="nhl">🏒 NHL</option></select>
+    <select id="fStatus" onchange="render()"><option value="">All statuses</option><option value="pending">Pending</option><option value="settled">Settled</option><option value="win">Wins</option><option value="loss">Losses</option></select>
+    <input id="fSearch" placeholder="Search team / pick…" oninput="render()"/>
+  </div>
+
+  <div id="board"></div>
+
+  <div style="margin:24px 0 8px">
+    <div class="ch secch open" id="ch-slate" onclick="collapseToggle('slate')">🗓️ Game slate <span id="slateHdr" style="color:var(--muted);font-weight:400;font-size:12px">· tick the games to research · ★ = recommended</span><span class="chev">▶</span></div>
+    <div class="cbody" id="body-slate">
+      <div id="slate"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="researchBtn" onclick="researchSlate()" style="background:#2563eb;color:#fff;border:none">🔬 Research now</button>
+        <span id="researchHint" style="color:var(--muted);font-size:12px"></span>
+      </div>
+    </div>
+  </div>
+
+  <footer>Data-driven local app at <code>~/Predictions</code> · edit picks live, results auto-settle via API-Football / API-NBA / ESPN.<br>
+    <span class="rg">21+ · Gambling problem? 1-800-GAMBLER.</span> Not financial or betting advice.</footer>
+</div>
+
+<!-- modal -->
+<div class="ov" id="ov">
+  <div class="modal">
+    <h3 id="mTitle">Add pick</h3>
+    <div class="f">
+      <div class="full"><label>Date / Section</label><input id="m_event_date" placeholder="Sun Jun 8 · Friendlies"/></div>
+      <div><label>Sport</label><select id="m_sport"><option value="soccer">⚽ Soccer</option><option value="nba">🏀 NBA</option><option value="wnba">🟠 WNBA</option><option value="mlb">⚾ MLB</option><option value="nhl">🏒 NHL</option></select></div>
+      <div><label>Tag</label><select id="m_tag"><option value="">—</option><option value="best">Best</option><option value="value">Value</option><option value="lean">Lean</option></select></div>
+      <div class="full"><label>Match</label><input id="m_match" placeholder="Spain v Peru"/></div>
+      <div class="full"><label>Pick (display)</label><input id="m_pick" placeholder="Spain -1.5"/></div>
+      <div><label>Market</label><select id="m_market" onchange="hintSel()"><option value="handicap">Handicap / Spread</option><option value="total">Total (O/U)</option><option value="1x2">1X2</option><option value="btts">BTTS</option><option value="draw">Draw</option><option value="other">Other</option></select></div>
+      <div><label>Selection</label><input id="m_selection" placeholder="home / away / over / under / yes / no"/></div>
+      <div><label>Line</label><input id="m_line" type="number" step="0.25" placeholder="-1.5 / 2.5"/></div>
+      <div><label>Odds</label><input id="m_odds" type="number" step="0.01" placeholder="1.91"/></div>
+      <div><label>Stake ($)</label><input id="m_stake" type="number" step="5" value="50"/></div>
+      <div><label>API fixture/event ID</label><input id="m_af_fixture_id" type="number" placeholder="optional → auto-settle"/></div>
+      <div class="full"><label>Kickoff (local time)</label><input id="m_kickoff" type="datetime-local"/></div>
+      <div class="full"><label>Rationale (short)</label><input id="m_rationale" placeholder="Why this pick — one line"/></div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="closeM()">Cancel</button><button class="btn primary" id="mSave">Save</button></div>
+  </div>
+</div>
+
+<script>
+const api=(p,o)=>fetch(p,o).then(r=>r.json());
+let DATA=[], editId=null, dayCollapsed={}, fTournament='All', BANK=1000;
+const usd=(v,sign=false)=>(v<0?'−$':(sign?'+$':'$'))+Math.abs(v).toFixed(2).replace(/\.00$/,'');
+function competitionOf(r){
+  const s=((r.event_date||'')+' '+(r.match||'')).toLowerCase();
+  if(/world cup|\bwc\b|group [a-h]\b/.test(s)) return 'World Cup';
+  if(r.sport==='wnba'||/\bwnba\b/.test(s)) return 'WNBA';
+  if(r.sport==='mlb'||/\bmlb\b/.test(s)) return 'MLB';
+  if(r.sport==='nhl'||/\bnhl\b/.test(s)) return 'NHL';
+  if(r.sport==='nba'||/\bnba\b/.test(s)) return 'NBA Finals';
+  if(/friendl/.test(s)) return 'Friendlies';
+  return 'Other';
+}
+const TICON={'World Cup':'🌍','NBA Finals':'🏀','WNBA':'🟠','MLB':'⚾','NHL':'🏒','Friendlies':'⚽','Other':'•'};
+const ALWAYS_SHOW=new Set(['Friendlies','WNBA','MLB','NHL','Other']);  // recurring/ongoing leagues — not windowed (add more league names here later)
+const WIN_BEFORE_MS=2*86400e3, WIN_AFTER_MS=1*86400e3;   // tournament tab: show 2d before first game, hide 1d after last
+function compWindowOpen(comp){
+  if(ALWAYS_SHOW.has(comp)) return true;                 // friendlies/leagues/misc always visible
+  let mn=Infinity, mx=-Infinity, has=false;
+  DATA.forEach(r=>{ if(competitionOf(r)!==comp) return;
+    const t=r.kickoff?Date.parse(r.kickoff):NaN;
+    if(!isNaN(t)){has=true; if(t<mn)mn=t; if(t>mx)mx=t;} });
+  if(!has) return true;                                   // no kickoff data yet → can't window, keep visible
+  const now=Date.now();
+  return now>=mn-WIN_BEFORE_MS && now<=mx+WIN_AFTER_MS;   // within [first−2d, last+1d]; else hidden (data kept in DB)
+}
+const BOARD_DAYS=2;   // settled picks older than this drop off the board (still counted in balance/stats/chart)
+function onBoard(r){
+  if(r.archived) return false;                           // archived = cleared from the daily board (still in ledger)
+  if(r.status==='pending') return true;                  // pending always shows
+  const t=Date.parse(r.settled_at||r.kickoff||r.created_at||'');
+  return isNaN(t) ? true : (Date.now()-t)<=BOARD_DAYS*86400e3;
+}
+function renderTournaments(){
+  const g={}; DATA.forEach(r=>{const c=competitionOf(r);(g[c]=g[c]||{n:0,p:0});g[c].n++;if(r.status==='pending')g[c].p++;});
+  const order=['World Cup','NBA Finals','WNBA','MLB','NHL','Friendlies','Other'].filter(c=>g[c] && compWindowOpen(c));
+  if(fTournament!=='All' && !order.includes(fTournament)) fTournament='All';   // selected tab fell out of window
+  let tot=0,totP=0; order.forEach(c=>{tot+=g[c].n; totP+=g[c].p;});
+  const chip=(key,label,n,p,active)=>`<div class="tchip ${active?'active':''}" onclick="setTournament('${key}')">${label}<span class="cnt">${p?p+' live':n}</span></div>`;
+  document.getElementById('tournaments').innerHTML =
+    chip('All','All',tot,totP,fTournament==='All') +
+    order.map(c=>chip(c,TICON[c]+' '+c,g[c].n,g[c].p,fTournament===c)).join('');
+}
+function setTournament(t){ fTournament=t; renderTournaments(); render(); }
+const STL={win:"✅ Win",loss:"❌ Loss",pending:"⏳ Pending",void:"➖ Void",half_win:"½ Win",half_loss:"½ Loss"};
+function koFmt(iso){ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return '';
+  return '⏰ '+d.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})+' · '; }
+function toggleR(id){ const r=document.getElementById('rat-'+id), c=document.getElementById('pkc-'+id);
+  if(!r) return; const open=r.classList.toggle('show'); if(c) c.classList.toggle('open',open); }
+function toggleDay(i){ const d=window.__order[i]; if(d==null) return;
+  const def=(window.__dayPend[d]===0); const cur=(d in dayCollapsed)?dayCollapsed[d]:def;
+  dayCollapsed[d]=!cur; render(); }
+const TAGL={best:"BEST",value:"VALUE",lean:"LEAN"};
+
+function dateLabel(d){ try{ const dt=new Date(d+'T12:00:00'); return dt.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'}); }catch(e){ return d; } }
+async function renderSlate(){
+  let games; try{ games=await api('/api/slate'); }catch(e){ return; }
+  const el=document.getElementById('slate');
+  if(!games||!games.length){ el.innerHTML='<div style="color:var(--muted);padding:12px 4px">No slate yet. Ask Claude to list the next day’s games.</div>'; return; }
+  const byDate={}; games.forEach(g=>{ (byDate[g.date]=byDate[g.date]||[]).push(g); });
+  const chk=games.filter(g=>g.checked).length;
+  document.getElementById('slateHdr').innerHTML=`· tick games to research · ★ = recommended · <b>${chk}</b> selected`;
+  const hint=document.getElementById('researchHint'); if(hint) hint.textContent=chk?`${chk} game(s) selected — queues a research request for Claude`:'tick games above, then click to queue';
+  el.innerHTML=Object.keys(byDate).sort().map(d=>{
+    const rows=byDate[d].map(g=>{
+      const star=g.starred?'<span title="recommended" style="color:#f5b301;font-size:16px">★</span>':'<span style="color:var(--border);font-size:16px">☆</span>';
+      const ko=g.kickoff?`<span class="meta" style="color:var(--muted)">${new Date(g.kickoff).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span>`:'';
+      const done=g.researched?'<span class="st win" style="font-size:11px">researched</span>':'';
+      return `<label class="row" style="cursor:pointer;align-items:center;display:grid;grid-template-columns:28px 22px 1fr auto auto;gap:8px">
+        <input type="checkbox" ${g.checked?'checked':''} onchange="slateCheck(${g.id},this.checked)" style="width:17px;height:17px;cursor:pointer">
+        ${star}
+        <span class="pk">${g.match||g.event_ticker}</span>
+        ${ko} ${done}
+      </label>`;
+    }).join('');
+    return `<div style="margin-bottom:10px"><div style="font-weight:600;margin:6px 2px;color:var(--muted)">${dateLabel(d)}</div><div class="tbl">${rows}</div></div>`;
+  }).join('');
+}
+async function slateCheck(id,on){ try{ await api('/api/slate/'+id,{method:'POST',body:JSON.stringify({checked:on})}); }catch(e){} renderSlate(); }
+async function researchSlate(){
+  let games; try{ games=await api('/api/slate'); }catch(e){ return; }
+  const picked=games.filter(g=>g.checked);
+  if(!picked.length){ alert('Tick at least one game first.'); return; }
+  const list=picked.map(g=>'• '+(g.match||g.event_ticker)+(g.event_ticker?' ['+g.event_ticker+']':'')).join('\n');
+  const note='Research these slate games and make picks (star + stage prod candidates):\n'+list;
+  await api('/api/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'research_slate',note})});
+  loadRequests();
+  alert('🔬 Research queued for '+picked.length+' game(s):\n\n'+list+'\n\n📥 Picked up when Claude is in a session.');
+}
+
+async function load(){
+  DATA=await api('/api/predictions');
+  renderStats(await api('/api/stats'));
+  renderChart(); renderBreakdown(); renderTournaments(); render(); loadRequests(); loadInsights(); renderSlate();
+  applyCollapse('analytics', true);    // collapsed by default, remembers your choice
+  document.getElementById('dot').textContent='updated '+new Date().toLocaleString();
+}
+
+function renderStats(s){
+  const f=(v,suf="")=>v===null||v===undefined?'–':v+suf;
+  BANK=s.bankroll_start||1000;
+  const gcls=s.growth_pct>0?'pos':s.growth_pct<0?'neg':'';
+  document.getElementById('stats').innerHTML=[
+    ['Balance',`<span class="${gcls}">${usd(s.balance)}</span>`],
+    ['Profit',`<span class="${gcls}">${usd(s.profit,true)}</span>`],
+    ['Growth',`<span class="${gcls}">${s.growth_pct>0?'+':''}${f(s.growth_pct,'%')}</span>`],
+    ['Record',`${s.wins}–${s.losses}`],
+    ['Win rate',f(s.win_rate,'%')],
+    ['ROI',`<span class="${s.roi>0?'pos':s.roi<0?'neg':''}">${f(s.roi,'%')}</span>`]
+  ].map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+}
+
+function renderChart(){
+  const settled=DATA.filter(r=>r.status!=='pending').sort((a,b)=>(a.settled_at||'').localeCompare(b.settled_at||'')||a.id-b.id);
+  let cum=0; const pts=[{x:0,y:BANK}]; settled.forEach((r,i)=>{cum+=r.profit; pts.push({x:i+1,y:BANK+cum});});
+  const W=560,Hh=160,pad=24; const maxN=Math.max(1,pts.length-1);
+  const ys=pts.map(p=>p.y); const mn=Math.min(BANK,...ys), mx=Math.max(BANK,...ys);
+  const sx=i=>pad+(W-2*pad)*(i/maxN), sy=v=>Hh-pad-(Hh-2*pad)*((v-mn)/((mx-mn)||1));
+  const line=pts.map((p,i)=>`${i?'L':'M'}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(' ');
+  const area=`${line} L${sx(maxN).toFixed(1)},${sy(mn).toFixed(1)} L${sx(0).toFixed(1)},${sy(mn).toFixed(1)} Z`;
+  const zero=sy(BANK);
+  document.getElementById('chart').innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" width="100%" preserveAspectRatio="xMidYMid meet">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c5cff" stop-opacity=".35"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${pad}" y1="${zero}" x2="${W-pad}" y2="${zero}" stroke="#2a3343" stroke-dasharray="3 3"/>
+    <path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="#7c5cff" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map(p=>`<circle cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="2.6" fill="#b7a6ff"/>`).join('')}
+    <text x="${pad}" y="14">${usd(mx)}</text><text x="${pad}" y="${Hh-6}">${usd(mn)}</text>
+    <text x="${W-pad-78}" y="14">bal ${usd(BANK+cum)}</text></svg>`;
+}
+
+function grp(rows,key){const m={};rows.forEach(r=>{const k=key(r)||'—';(m[k]=m[k]||[]).push(r);});return m;}
+function recline(rows){const w=rows.filter(r=>['win','half_win'].includes(r.status)).length,
+  l=rows.filter(r=>['loss','half_loss'].includes(r.status)).length,
+  p=rows.reduce((s,r)=>s+r.profit,0),
+  st=rows.filter(r=>r.status!=='pending'&&r.status!=='void').reduce((s,r)=>s+(r.stake||0),0);
+  return {w,l,p,roi:st?100*p/st:null};}
+function renderBreakdown(){
+  const byTag=grp(DATA,r=>r.tag||'untagged'), bySport=grp(DATA,r=>r.sport);
+  const blk=(title,m)=>`<div class="r" style="font-weight:700;color:var(--muted)"><span>${title}</span><span>W-L · P/L</span></div>`+
+    Object.entries(m).map(([k,rows])=>{const x=recline(rows);return `<div class="r"><span>${k}</span><span>${x.w}-${x.l} · <b class="${x.p>0?'pos':x.p<0?'neg':''}">${usd(x.p,true)}</b></span></div>`;}).join('');
+  document.getElementById('breakdown').innerHTML=blk('By sport',bySport)+'<div style="height:8px"></div>'+blk('By tag',byTag);
+}
+
+function render(){
+  const sp=fSport.value, stt=fStatus.value, q=fSearch.value.toLowerCase();
+  let rows=DATA.filter(r=>onBoard(r)&&compWindowOpen(competitionOf(r))&&(!sp||r.sport===sp)&&(fTournament==='All'||competitionOf(r)===fTournament)&&(!q||(r.match+' '+r.pick).toLowerCase().includes(q)));
+  if(stt==='pending')rows=rows.filter(r=>r.status==='pending');
+  else if(stt==='settled')rows=rows.filter(r=>r.status!=='pending');
+  else if(stt==='win')rows=rows.filter(r=>['win','half_win'].includes(r.status));
+  else if(stt==='loss')rows=rows.filter(r=>['loss','half_loss'].includes(r.status));
+  const g=grp(rows,r=>r.event_date); const order=[];rows.forEach(r=>{if(!order.includes(r.event_date))order.push(r.event_date);});
+  const sportIcon=s=>s==='wnba'?'🟠':s==='nba'?'🏀':s==='mlb'?'⚾':s==='nhl'?'🏒':'⚽';
+  window.__order=order; window.__dayPend={};
+  document.getElementById('board').innerHTML=order.map((d,di)=>{
+    const items=g[d]; const x=recline(items); const pend=items.filter(i=>i.status==='pending').length;
+    window.__dayPend[d]=pend;
+    const collapsed = (d in dayCollapsed) ? dayCollapsed[d] : (pend===0);   // settled-only days collapse by default
+    const pill=pend===items.length?`${pend} active`:`${x.w}-${x.l}${pend?` · ${pend} active`:' · done'} · ${usd(x.p,true)}`;
+    return `<section class="day"><h2 class="ch ${collapsed?'':'open'}" style="cursor:pointer" onclick="toggleDay(${di})">${d}<span class="pill">${pill}</span><span class="chev">▶</span></h2>
+      <div class="cbody ${collapsed?'hide':''}"><div class="tbl">
+      <div class="row head"><div>Pick</div><div class="num">Odds</div><div class="num stake">Stake</div><div style="text-align:center">P/L</div><div style="text-align:right">Status / Actions</div></div>
+      ${items.map(r=>rowHTML(r,sportIcon)).join('')}</div></div></section>`;
+  }).join('') || `<div class="panel" style="text-align:center;color:var(--muted)">No picks match.</div>`;
+}
+
+function rowHTML(r,si){
+  const tag=r.tag?`<span class="tag ${r.tag}">${TAGL[r.tag]}</span>`:'';
+  const score=(r.home_score!=null)?` (${r.home_score}-${r.away_score})`:'';
+  const pcls=r.profit>0?'pos':r.profit<0?'neg':'';
+  const pl=r.status==='pending'?'—':`<span class="${pcls}">${usd(r.profit,true)}</span>`;
+  const actions=`<div class="acts">
+      <span class="st ${r.status}">${STL[r.status]}</span>
+      ${r.af_fixture_id?`<button class="ic" title="Auto-settle now" onclick="autoSettle(${r.id})">⚡</button>`:''}
+      <button class="ic w" title="Mark win" onclick="setStatus(${r.id},'win')">✓</button>
+      <button class="ic l" title="Mark loss" onclick="setStatus(${r.id},'loss')">✗</button>
+      <button class="ic" title="Void" onclick="setStatus(${r.id},'void')">–</button>
+      <button class="ic" title="Edit" onclick="openEdit(${r.id})">✎</button>
+      <button class="ic l" title="Delete" onclick="del(${r.id})">🗑</button></div>`;
+  const rat=(r.rationale||'').replace(/</g,'&lt;');
+  return `<div class="row ${r.tag==='best'?'best':''}">
+    <div class="pkcell" id="pkc-${r.id}" onclick="toggleR(${r.id})"><span class="pk">${si(r.sport)} ${r.pick}</span>${tag}<span class="chev">▶</span><div class="meta">${koFmt(r.kickoff)}${r.match||''}${score}</div></div>
+    <div class="num">${r.odds??'—'}</div><div class="num stake">$${(r.stake??50).toFixed(0)}</div>
+    <div style="text-align:center;font-weight:600">${pl}</div>${actions}</div>
+    <div class="rat" id="rat-${r.id}"><div class="lbl">💡 Rationale</div>${rat||'<span style="color:var(--muted)">No rationale yet — click ✎ to add one.</span>'}</div>`;
+}
+
+async function setStatus(id,status){await api('/api/predictions/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});load();}
+async function del(id){if(confirm('Delete this pick?')){await fetch('/api/predictions/'+id,{method:'DELETE'});load();}}
+async function autoSettle(id){const r=await api('/api/predictions/'+id+'/settle-af',{method:'POST'});if(r.error)alert(r.error);load();}
+async function settleAuto(){
+  const r=await api('/api/settle-all-af',{method:'POST'});
+  const done=(r.settled||[]);
+  const stuck=(DATA||[]).filter(x=>x.status==='pending' && !x.af_fixture_id);
+  let msg = done.length
+    ? '✅ Settled '+done.length+' via API-Football (no browser needed):\n'+done.map(s=>`${s.pick}  ${s.score} → ${s.status.toUpperCase()}`).join('\n')
+    : 'No finished soccer fixtures ready to settle right now.';
+  if(stuck.length) msg += '\n\n⏳ '+stuck.length+' pick(s) need manual settle (no API-Football fixture id'+(stuck.some(s=>s.sport==='nba')?', incl. NBA':'')+'):\n'+stuck.map(s=>'• '+s.pick).join('\n');
+  alert(msg);
+  load();
+}
+
+async function dispatch(action){
+  const map={
+    settle:{a:'settle', note:'Settle today’s pending picks from their final scores.',
+            msg:"✅ Settle request sent to Claude.\n\nIt will pull today's final scores and grade every pending pick (win/loss/void) with P&L."},
+    predict:{a:'predict', note:'Generate and add the next day’s friendly picks using the strategy + latest learned insights.',
+            msg:"🔮 Predict request sent to Claude.\n\nIt will fetch the next day's fixtures and add fresh picks to the board."},
+    learn:{a:'learn', note:'Analyze settled results (by tag, market, selection, odds), extract what is working vs not, and save an insights summary that future predictions should use.',
+            msg:"🧠 Learn request sent to Claude.\n\nIt will analyze your settled results and write back lessons to refine future predictions — shown in the “What I've learned” panel."}
+  };
+  const m=map[action]||map.settle;
+  await api('/api/request',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:m.a,note:m.note})});
+  loadRequests();
+  alert(m.msg+"\n\n📥 Queued for Claude. It'll be handled when Claude is in a session — refresh to see updates.");
+}
+function collapseToggle(key){
+  const body=document.getElementById('body-'+key), h=document.getElementById('ch-'+key);
+  const hidden=body.classList.toggle('hide');
+  if(h) h.classList.toggle('open',!hidden);
+  try{localStorage.setItem('cl2-'+key, hidden?'hide':'show');}catch(e){}
+}
+function applyCollapse(key,defHide){
+  const body=document.getElementById('body-'+key), h=document.getElementById('ch-'+key);
+  if(!body) return;
+  let v=null; try{v=localStorage.getItem('cl2-'+key);}catch(e){}
+  const hide = v? v==='hide' : defHide;
+  body.classList.toggle('hide',hide);
+  if(h) h.classList.toggle('open',!hide);
+}
+async function loadInsights(){
+  const ins=await api('/api/insights'); const el=document.getElementById('insights');
+  if(!ins.length){ el.innerHTML=''; return; }
+  const i=ins[0];
+  el.innerHTML=`<div class="panel" style="border-left:3px solid #f59e0b">
+    <div class="ch open" id="ch-ins" onclick="collapseToggle('ins')"><span style="color:#f59e0b">🧠 What I've learned</span>
+      <span style="color:var(--muted);text-transform:none;font-weight:400;font-size:11px">${(i.created_at||'').slice(0,10)}</span><span class="chev">▶</span></div>
+    <div class="cbody" id="body-ins" style="margin-top:10px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:#dbe3ee">${(i.summary||'').replace(/</g,'&lt;')}</div></div>`;
+  applyCollapse('ins', true);   // collapsed by default
+}
+async function loadRequests(){
+  const rs=await api('/api/requests'); const bar=document.getElementById('reqbar');
+  if(!rs.length){bar.innerHTML='';return;}
+  const r=rs[0]; const open=rs.filter(x=>x.status==='open').length;
+  const color=r.status==='done'?'var(--win)':'var(--pend)';
+  bar.innerHTML=`<div class="banner" style="border-left-color:${color}">
+    <b>Last request:</b> ${r.action} · <span style="color:${color}">${r.status.toUpperCase()}</span>
+    ${r.status==='done'&&r.result?` — <span style="color:var(--muted)">${r.result}</span>`:''}
+    ${open>1?` · ${open} open`:''} <span style="color:var(--muted);float:right">${r.created_at?.replace('T',' ')||''}</span></div>`;
+}
+
+function hintSel(){const m=m_market.value;const ph={handicap:'home / away',total:'over / under','1x2':'home / away / draw',btts:'yes / no',draw:'draw',other:''}[m];m_selection.placeholder=ph;}
+function isoToLocalInput(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
+function openAdd(){editId=null;mTitle.textContent='Add pick';['event_date','match','pick','selection','line','odds','af_fixture_id','kickoff','rationale'].forEach(k=>document.getElementById('m_'+k).value='');m_stake.value=50;m_tag.value='';m_sport.value='soccer';m_market.value='handicap';hintSel();ov.classList.add('show');}
+function openEdit(id){const r=DATA.find(x=>x.id===id);editId=id;mTitle.textContent='Edit pick';
+  for(const k of ['event_date','sport','match','pick','market','selection','line','odds','stake','tag','af_fixture_id','rationale']){const el=document.getElementById('m_'+k);if(el)el.value=r[k]??'';}
+  m_kickoff.value=isoToLocalInput(r.kickoff);
+  ov.classList.add('show');}
+function closeM(){ov.classList.remove('show');}
+ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
+mSave.onclick=async()=>{
+  const b={};['event_date','sport','match','pick','market','selection','tag','rationale'].forEach(k=>b[k]=document.getElementById('m_'+k).value);
+  ['line','odds','stake','af_fixture_id'].forEach(k=>{const v=document.getElementById('m_'+k).value;b[k]=v===''?null:Number(v);});
+  b.kickoff = m_kickoff.value ? new Date(m_kickoff.value).toISOString() : null;
+  if(editId){await api('/api/predictions/'+editId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});}
+  else{await api('/api/predictions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});}
+  closeM();load();
+};
+load();
+</script>
+</body>
+</html>

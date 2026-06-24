@@ -1,0 +1,28 @@
+# --- secrets & credentials (NEVER commit) ---
+.apifootball_key
+.kalshi_removed_backup/
+*.pem
+*_key
+.kalshi_key*
+
+# --- personal data / runtime state ---
+predictions.db
+*.db
+*.log
+inbox.jsonl
+
+# --- local tooling / env ---
+.venv/
+__pycache__/
+*.pyc
+.claude/
+.DS_Store
+
+# --- backups / scratch ---
+*.bak
+*.prekalshi-strip
+
+# --- node / build output ---
+web/node_modules/
+web/dist/
+node_modules/

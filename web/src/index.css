@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Kalshi-style DARK theme */
+    --background: 222 28% 5%;
+    --foreground: 210 25% 96%;
+    --card: 222 22% 8%;
+    --card-foreground: 210 25% 96%;
+    --popover: 222 22% 9%;
+    --popover-foreground: 210 25% 96%;
+    --primary: 210 25% 96%;
+    --primary-foreground: 222 35% 9%;
+    --secondary: 220 16% 14%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 220 16% 14%;
+    --muted-foreground: 217 12% 58%;
+    --accent: 220 16% 15%;
+    --accent-foreground: 210 20% 92%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 16%;
+    --input: 220 14% 20%;
+    --ring: 210 25% 65%;
+    --radius: 0.7rem;
+    /* market semantics (brighter for dark bg) */
+    --yes: 152 62% 46%;
+    --yes-soft: 152 45% 13%;
+    --no: 0 78% 62%;
+    --no-soft: 0 55% 15%;
+    --warn: 38 92% 56%;
+    --warn-soft: 40 70% 13%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.011em;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+}
