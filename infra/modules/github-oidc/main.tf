@@ -131,6 +131,37 @@ data "aws_iam_policy_document" "deployer_permissions" {
                  "arn:aws:iam::*:instance-profile/edge-machine-*"]
   }
 
+  # IAM resources this module manages directly (OIDC provider + deployer policy).
+  # Terraform must be able to read these during plan and update them during apply.
+  statement {
+    sid    = "IAMOIDCAndPolicyManagement"
+    effect = "Allow"
+    actions = [
+      "iam:GetOpenIDConnectProvider",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:DeleteOpenIDConnectProvider",
+      "iam:TagOpenIDConnectProvider",
+      "iam:UntagOpenIDConnectProvider",
+      "iam:AddClientIDToOpenIDConnectProvider",
+      "iam:RemoveClientIDFromOpenIDConnectProvider",
+      "iam:UpdateOpenIDConnectProviderThumbprint",
+      "iam:GetPolicy",
+      "iam:CreatePolicy",
+      "iam:DeletePolicy",
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion",
+      "iam:GetPolicyVersion",
+      "iam:ListPolicyVersions",
+      "iam:SetDefaultPolicyVersion",
+      "iam:TagPolicy",
+      "iam:UntagPolicy"
+    ]
+    resources = [
+      "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com",
+      "arn:aws:iam::*:policy/edge-machine-deployer-policy"
+    ]
+  }
+
   # S3 + CloudFront for frontend
   statement {
     sid    = "S3Frontend"
