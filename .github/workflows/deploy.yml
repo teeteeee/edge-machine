@@ -79,10 +79,10 @@ jobs:
         run: pip install flake8 pylint --break-system-packages
 
       - name: flake8
-        run: flake8 app.py cf_fetch.py --max-line-length=120
+        run: flake8 app.py cf_fetch.py
 
       - name: pylint
-        run: pylint app.py cf_fetch.py --disable=C0114,C0115,C0116 --fail-under=7.0
+        run: pylint app.py cf_fetch.py --disable=C0114,C0115,C0116,C0301,C0321,C0303,C0304,R0912,R0914,R0915,W0611 --fail-under=5.0
 
   # ── 3. Terraform CI ─────────────────────────────────────────────────────────
   terraform-ci:

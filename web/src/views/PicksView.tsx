@@ -337,6 +337,7 @@ export function PicksView() {
   })
   const byDate: Record<string, [string, Prediction[]][]> = {}
   for (const [k, legs] of games) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     ;(byDate[legs[0].event_date] ||= []).push([k, legs])
   }
 
