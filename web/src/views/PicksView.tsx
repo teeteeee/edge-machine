@@ -337,14 +337,13 @@ export function PicksView() {
   })
   const byDate: Record<string, [string, Prediction[]][]> = {}
   for (const [k, legs] of games) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     ;(byDate[legs[0].event_date] ||= []).push([k, legs])
   }
 
   const toggleFlip = (k: string) =>
     setFlipped((s) => {
       const n = new Set(s)
-      n.has(k) ? n.delete(k) : n.add(k)
+      if (n.has(k)) { n.delete(k) } else { n.add(k) }
       return n
     })
 

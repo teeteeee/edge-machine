@@ -19,9 +19,11 @@ terraform {
   }
 
   backend "s3" {
-    # Values are passed dynamically via -backend-config in the bootstrap workflow.
-    # If running locally, pass them with: terraform init -backend-config=...
-    # bucket, key, region, dynamodb_table, encrypt
+    bucket         = "edge-machine-tf-state-412058343636"
+    key            = "edge-machine/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "edge-machine-tf-locks"
+    encrypt        = true
   }
 }
 
