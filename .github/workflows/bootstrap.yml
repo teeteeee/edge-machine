@@ -1,0 +1,89 @@
+name: Bootstrap — One-Time AWS Setup
+
+# Run this ONCE manually to create:
+#   1. S3 bucket + DynamoDB table (Terraform remote state)
+#   2. GitHub OIDC provider + IAM deployer role in AWS
+#
+# After this runs successfully:
+#   - Copy the role ARN from the job summary
+#   - Add it to GitHub → Settings → Variables → AWS_ROLE_ARN
+#   - Delete the AWS_BOOTSTRAP_ACCESS_KEY_ID / SECRET from GitHub Secrets
+#   - All future deploys use OIDC (no more keys)
+
+on:
+  workflow_dispatch:   # Manual trigger only — never runs automatically
+
+jobs:
+  bootstrap:
+    name: "Bootstrap AWS Infrastructure"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use temporary access keys (stored as GitHub Secrets just for this run)
+      - name: Configure AWS credentials (temporary keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_BOOTSTRAP_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_BOOTSTRAP_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9"
+          terraform_wrapper: false   # Needed so we can capture outputs cleanly
+
+      # ── Step 1: Create S3 state bucket + DynamoDB lock table ──────────────
+      - name: Terraform Init (bootstrap)
+        working-directory: infra/bootstrap
+        run: terraform init -input=false
+
+      - name: Terraform Apply (bootstrap)
+        working-directory: infra/bootstrap
+        run: terraform apply -auto-approve -input=false
+
+      - name: Get state bucket name
+        id: bucket
+        working-directory: infra/bootstrap
+        run: echo "name=$(terraform output -raw state_bucket)" >> $GITHUB_OUTPUT
+
+      # ── Step 2: Create OIDC provider + IAM role ────────────────────────────
+      - name: Terraform Init (main — dynamic backend)
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ steps.bucket.outputs.name }}" \
+            -backend-config="key=edge-machine/terraform.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="dynamodb_table=edge-machine-tf-locks" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Apply (main)
+        working-directory: infra
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var="github_org=teeteeee" \
+            -var="github_repo=edge-machine"
+
+      - name: Get deployer role ARN
+        id: role
+        working-directory: infra
+        run: echo "arn=$(terraform output -raw github_deployer_role_arn)" >> $GITHUB_OUTPUT
+
+      # ── Summary ───────────────────────────────────────────────────────────
+      - name: Print next steps
+        run: |
+          echo "## Bootstrap complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to **Settings → Secrets and variables → Actions → Variables**" >> $GITHUB_STEP_SUMMARY
+          echo "2. Create a new variable:" >> $GITHUB_STEP_SUMMARY
+          echo "   - Name: \`AWS_ROLE_ARN\`" >> $GITHUB_STEP_SUMMARY
+          echo "   - Value: \`${{ steps.role.outputs.arn }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Delete the \`AWS_BOOTSTRAP_ACCESS_KEY_ID\` and \`AWS_BOOTSTRAP_SECRET_ACCESS_KEY\` secrets" >> $GITHUB_STEP_SUMMARY
+          echo "4. Delete the temporary IAM user from your AWS console" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Role ARN:** \`${{ steps.role.outputs.arn }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**State bucket:** \`${{ steps.bucket.outputs.name }}\`" >> $GITHUB_STEP_SUMMARY
