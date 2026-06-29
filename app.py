@@ -789,6 +789,8 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u=urlparse(self.path); p=u.path; q=parse_qs(u.query)
+        if p=="/health":                                                    # ALB / load-balancer health check
+            return self._send({"status":"ok","version":"1.0"})
         if p in ("/","/index.html"):
             dist_idx=os.path.join(ROOT,"web","dist","index.html")          # React build (preferred)
             path=dist_idx if os.path.exists(dist_idx) else os.path.join(ROOT,"index.html")

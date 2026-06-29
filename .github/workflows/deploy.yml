@@ -1,0 +1,235 @@
+name: CI / Deploy — Edge Machine
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Cancel in-flight runs for the same branch on new push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  TF_DIR: infra
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOBS
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. Frontend CI ──────────────────────────────────────────────────────────
+  frontend-ci:
+    name: "Frontend — TypeCheck + Lint + Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npx eslint . --max-warnings=0
+
+      - name: Vite build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: web/dist/
+          retention-days: 7
+
+  # ── 2. Backend CI ───────────────────────────────────────────────────────────
+  backend-ci:
+    name: "Backend — Lint + Syntax Check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax check
+        run: python -m py_compile app.py cf_fetch.py
+
+      - name: Install linters
+        run: pip install flake8 pylint --break-system-packages
+
+      - name: flake8
+        run: flake8 app.py cf_fetch.py --max-line-length=120
+
+      - name: pylint
+        run: pylint app.py cf_fetch.py --disable=C0114,C0115,C0116 --fail-under=7.0
+
+  # ── 3. Terraform CI ─────────────────────────────────────────────────────────
+  terraform-ci:
+    name: "Terraform — Validate + Plan"
+    runs-on: ubuntu-latest
+    # Only plan on pushes to deploy branches (not PRs from forks)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9"
+
+      # Authenticate via OIDC for plan (read-only on state)
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: edge-machine-tf-plan
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform plan \
+            -var="environment=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}" \
+            -out=tfplan \
+            -input=false
+        env:
+          TF_VAR_github_org: teeteeee
+          TF_VAR_github_repo: edge-machine
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.sha }}
+          path: ${{ env.TF_DIR }}/tfplan
+          retention-days: 1
+
+  # ── 4. Deploy to Staging ────────────────────────────────────────────────────
+  deploy-staging:
+    name: "Deploy → Staging"
+    needs: [frontend-ci, backend-ci, terraform-ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: edge-machine-deploy-staging
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9"
+
+      - name: Terraform Apply (staging)
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve \
+            -var="environment=staging" \
+            -input=false
+        env:
+          TF_VAR_github_org: teeteeee
+          TF_VAR_github_repo: edge-machine
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: web/dist
+
+      - name: Install Ansible
+        run: pip install ansible boto3 --break-system-packages
+
+      - name: Deploy with Ansible
+        run: |
+          ansible-playbook ansible/site.yml \
+            -i ansible/inventory/staging \
+            --extra-vars "env=staging git_sha=${{ github.sha }}"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+
+  # ── 5. Deploy to Production ─────────────────────────────────────────────────
+  deploy-production:
+    name: "Deploy → Production"
+    needs: [frontend-ci, backend-ci, terraform-ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production   # ← requires manual approval in GitHub Environments
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: edge-machine-deploy-production
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9"
+
+      - name: Terraform Apply (production)
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve \
+            -var="environment=production" \
+            -input=false
+        env:
+          TF_VAR_github_org: teeteeee
+          TF_VAR_github_repo: edge-machine
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: web/dist
+
+      - name: Install Ansible
+        run: pip install ansible boto3 --break-system-packages
+
+      - name: Deploy with Ansible
+        run: |
+          ansible-playbook ansible/site.yml \
+            -i ansible/inventory/production \
+            --extra-vars "env=production git_sha=${{ github.sha }}"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}

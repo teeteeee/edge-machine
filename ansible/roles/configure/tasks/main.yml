@@ -1,0 +1,97 @@
+---
+- name: Create app user
+  user:
+    name: "{{ app_user }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Create app directory
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0750"
+
+- name: Install Python 3 and nginx
+  dnf:
+    name: ["python3", "nginx", "awscli"]
+    state: present
+
+- name: Mount EBS data volume (if not already mounted)
+  mount:
+    path: "{{ data_dir }}"
+    src: /dev/xvdf
+    fstype: ext4
+    state: mounted
+
+- name: Fetch APIFOOTBALL_KEY from SSM
+  command: >
+    aws ssm get-parameter
+    --name "{{ ssm_key_path }}"
+    --with-decryption
+    --query Parameter.Value
+    --output text
+  register: ssm_key
+  changed_when: false
+
+- name: Write API key file
+  copy:
+    content: "{{ ssm_key.stdout }}"
+    dest: "{{ app_dir }}/.apifootball_key"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"
+  no_log: true
+
+- name: Write systemd service unit
+  copy:
+    dest: /etc/systemd/system/edge-machine.service
+    content: |
+      [Unit]
+      Description=Edge Machine Python Backend
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ app_user }}
+      WorkingDirectory={{ app_dir }}
+      ExecStart=/usr/bin/python3 app.py
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable edge-machine service
+  systemd:
+    name: edge-machine
+    enabled: true
+    daemon_reload: true
+
+- name: Write nginx reverse proxy config
+  copy:
+    dest: /etc/nginx/conf.d/edge-machine.conf
+    content: |
+      server {
+        listen 80;
+        server_name _;
+
+        location / {
+          proxy_pass http://127.0.0.1:{{ app_port }};
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        location /health {
+          proxy_pass http://127.0.0.1:{{ app_port }}/health;
+          access_log off;
+        }
+      }
+
+- name: Enable and start nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: true

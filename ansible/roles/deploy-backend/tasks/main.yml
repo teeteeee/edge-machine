@@ -1,0 +1,38 @@
+---
+- name: Sync backend files to EC2
+  synchronize:
+    src: "{{ playbook_dir }}/../"
+    dest: "{{ app_dir }}/"
+    rsync_opts:
+      - "--exclude=web/"
+      - "--exclude=infra/"
+      - "--exclude=ansible/"
+      - "--exclude=.git/"
+      - "--exclude=*.db"
+      - "--exclude=node_modules/"
+      - "--exclude=__pycache__/"
+      - "--exclude=.gitignore"
+    owner: false
+    group: false
+
+- name: Set ownership on app files
+  file:
+    path: "{{ app_dir }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    recurse: true
+
+- name: Restart edge-machine service
+  systemd:
+    name: edge-machine
+    state: restarted
+
+- name: Wait for backend to be healthy
+  uri:
+    url: "http://127.0.0.1:{{ app_port }}/health"
+    status_code: 200
+    timeout: 15
+  register: health
+  retries: 6
+  delay: 5
+  until: health.status == 200

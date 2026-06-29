@@ -1,0 +1,54 @@
+---
+- name: Get S3 bucket name from SSM
+  command: >
+    aws ssm get-parameter
+    --name /edge-machine/{{ env }}/s3-bucket
+    --query Parameter.Value
+    --output text
+  register: s3_bucket
+  changed_when: false
+  delegate_to: localhost
+  become: false
+
+- name: Get CloudFront distribution ID from SSM
+  command: >
+    aws ssm get-parameter
+    --name /edge-machine/{{ env }}/cloudfront-distribution-id
+    --query Parameter.Value
+    --output text
+  register: cf_dist_id
+  changed_when: false
+  delegate_to: localhost
+  become: false
+
+- name: Sync frontend dist to S3
+  command: >
+    aws s3 sync web/dist/ s3://{{ s3_bucket.stdout }}/
+    --delete
+    --cache-control "public,max-age=31536000,immutable"
+  args:
+    chdir: "{{ playbook_dir }}/.."
+  delegate_to: localhost
+  become: false
+
+- name: Fix index.html cache headers (no-store for SPA entry)
+  command: >
+    aws s3 cp s3://{{ s3_bucket.stdout }}/index.html
+    s3://{{ s3_bucket.stdout }}/index.html
+    --metadata-directive REPLACE
+    --cache-control "no-store"
+    --content-type "text/html"
+  delegate_to: localhost
+  become: false
+
+- name: Invalidate CloudFront cache
+  command: >
+    aws cloudfront create-invalidation
+    --distribution-id {{ cf_dist_id.stdout }}
+    --paths "/*"
+  delegate_to: localhost
+  become: false
+
+- name: Print deploy summary
+  debug:
+    msg: "Frontend deployed to s3://{{ s3_bucket.stdout }} | CF {{ cf_dist_id.stdout }} invalidated"

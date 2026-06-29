@@ -1,0 +1,18 @@
+---
+# Edge Machine — Main Ansible Playbook
+# Runs configure then deploy roles against EC2 host
+
+- name: Configure and deploy Edge Machine
+  hosts: edge_machine
+  become: true
+  vars:
+    app_user: edge-machine
+    app_dir: /opt/edge-machine
+    data_dir: /data
+    app_port: 8787
+    ssm_key_path: /edge-machine/apifootball-key
+
+  roles:
+    - configure
+    - deploy-backend
+    - deploy-frontend
