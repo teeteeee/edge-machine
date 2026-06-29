@@ -28,8 +28,8 @@ export function useApi<T>(url: string, key = 0) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const load = useCallback(() => {
-    setLoading(true)
-    getJSON<T>(url)
+    Promise.resolve()
+      .then(() => { setLoading(true); return getJSON<T>(url) })
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false))
